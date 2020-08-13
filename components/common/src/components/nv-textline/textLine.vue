@@ -29,6 +29,7 @@ import 'codemirror/mode/python/python.js';
 import 'codemirror/mode/php/php.js';
 import 'codemirror/mode/go/go.js';
 import 'codemirror/mode/sql/sql.js';
+import 'codemirror/mode/yaml/yaml.js';
 import 'codemirror/mode/markdown/markdown.js';
 
 // active-line.js
@@ -105,7 +106,7 @@ export default {
         if (mirrorWrapper) {
             let textLineWrapper = this.$refs['wrapper-' + this.mirrorId];
             let codeMirror = mirrorWrapper.$el.children[1];
-            let border = this.getClassValue(textLineWrapper, 'border-width');
+            let border = this.getClassValue(textLineWrapper, 'border-width') || this.getClassValue(textLineWrapper, 'border-bottom-width');
             border = border ? border : 0;
             codeMirror.style.height = this.height - 2 * border + 'px';
         }

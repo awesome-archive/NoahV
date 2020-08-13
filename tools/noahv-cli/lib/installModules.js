@@ -8,17 +8,13 @@
 let spawn = require('cross-spawn');
 const logUtil = require('../lib/logUtil');
 
-console.log(process.cwd());
-
 module.exports = function (callback) {
     let args = ['i'];
-    let cmd = spawn('npm', args, {stdio: 'inherit'});
-    cmd.on('close', function (status) {
-        if (status === 0) {
-            callback && callback();
-        }
-        else {
-            logUtil.error('noahv-cli', 'error', 'Npm running error,please check node&npm is exist in your system');
-        }
-    });
+    let cmd = spawn.sync('npm', args, {stdio: 'inherit'});
+    if (cmd.status !== 0) {
+        logUtil.error('noahv-cli', 'error', 'Npm running error,you can try run npm i');
+    }
+    else {
+        callback && callback();
+    }
 };

@@ -138,6 +138,12 @@ export default {
                     type: 'dot-circle-o'
                 },
                 {
+                    label: '级联选择组件',
+                    key: 'doc/component/cascader-select',
+                    link: 'doc/component/cascader-select',
+                    type: 'angle-down'
+                },
+                {
                     label: '标签组件',
                     key: 'doc/component/tag',
                     link: 'doc/component/tag',
@@ -154,6 +160,18 @@ export default {
                     key: 'doc/component/search',
                     link: 'doc/component/search',
                     type: 'search'
+                },
+                {
+                    label: '流程组件',
+                    key: 'doc/component/pipline',
+                    link: 'doc/component/pipline',
+                    type: 'network-topology'
+                },
+                {
+                    label: '穿梭框组件',
+                    key: 'doc/component/transfer',
+                    link: 'doc/component/transfer',
+                    type: 'angle-double-right-square'
                 },
                 {
                     label: '值班表组件',
@@ -178,6 +196,12 @@ export default {
                     key: 'doc/component/business/switchTpl',
                     link: 'doc/component/business/switchTpl',
                     type: 'deployment-change'
+                },
+                {
+                    label: '省略组件',
+                    key: 'doc/component/ellipsis',
+                    link: 'doc/component/ellipsis',
+                    type: 'time'
                 },
                 {
                     label: '列表组件',
@@ -377,12 +401,13 @@ export default {
             ]
         }
     ],
-    hasBread: true,
+    hasBread: false,
     logo: {
         // 是否需要logo
         hasLogo: true,
         title: 'NoahV文档',
-        src: logo
+        src: logo,
+        link: '#/'
     },
     login: {
         hasLogin: false,

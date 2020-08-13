@@ -2,13 +2,17 @@
     <div :class="getClassName()" v-if="['datetime', 'daterangetime'].indexOf(type) > -1 || confirm">
         <component 
             v-bind:is="componentName"
+            :tips="tips"
             :type="type"
+            :trigger="trigger"
             :confirm="confirm"
+            :autoFix="autoFix"
             :dateValue="dateValue"
             :dateOptions="dateOptions"
             :timePickerCtrl="timePickerCtrl"
             @on-reset="reset"
             @on-confirm="confirmClick"
+            @on-date-change="dateChange"
         >
         </component>
     </div>
@@ -32,8 +36,11 @@ export default {
         };
     },
     props: {
+        tips: String,
         theme: String,
+        trigger: String,
         confirm: Boolean,
+        autoFix: Boolean,
         dateValue: Object,
         // 日期时间候选项
         dateOptions: Object,
@@ -77,6 +84,13 @@ export default {
         confirmClick() {
             this.$emit('on-confirm');
             this.$emit('on-close');
+        },
+        /**
+         * 触发chang事件
+         *
+         */
+        dateChange() {
+            this.$emit('on-date-change');
         }
     }
 };

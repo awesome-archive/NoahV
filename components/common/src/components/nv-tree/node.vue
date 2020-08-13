@@ -1,5 +1,6 @@
 <template>
     <ul
+        :class="{'hidden': item.hidden}"
         :draggable="draggable"
         @dragstart="dragStartHandler($event, item)"
         @dragover="dragOverHandler($event, item)"
@@ -10,11 +11,10 @@
             <div :class="getNodeCls(item)">
                 <div class="node-body">
                     <span>
-                        <div class="node-arrow">
+                        <div class="node-arrow" @click="expandHandler(item)">
                             <span
                                 v-if="(item.children && item.children.length) || item.lazyable"
                                 :class="getArrowCls(item)"
-                                @click="expandHandler(item)"
                             >
                             </span>
                         </div>
@@ -28,7 +28,7 @@
                         <nv-icon
                             v-if="item.icon"
                             :type="item.icon"
-                            class="tree-icon"
+                            class="node-icon"
                         >
                         </nv-icon>
                     </span>
@@ -50,6 +50,7 @@
                 <NvTreeNodeEditPanel
                     v-if="item.editMode || editMode"
                     :data="item"
+                    :checkbox="checkbox"
                     :appendIcon="appendIcon"
                     :removeIcon="removeIcon"
                     :editIcon="editIcon"
@@ -66,6 +67,7 @@
                 :key="i"
                 :data="subItem"
                 :icon="item.icon"
+                :dataList="dataList"
                 :checkbox="checkbox"
                 :lazyLoad="lazyLoad"
                 :loadData="loadData"
@@ -77,6 +79,7 @@
                 :appendLabel="appendLabel"
                 :removeLabel="removeLabel"
                 :editLabel="editLabel"
+                :autoCheckBox="autoCheckBox"
                 :nodeTemplate="nodeTemplate"
             >
             </NvTreeNode>
@@ -100,7 +103,17 @@ export default {
                 return {};
             }
         },
+        dataList: {
+            type: Object,
+            default() {
+                return {};
+            }
+        },
         checkbox: {
+            type: Boolean,
+            default: false
+        },
+        autoCheckBox: {
             type: Boolean,
             default: false
         },
@@ -271,7 +284,7 @@ export default {
             // 更新子节点状态
             this.updateSubNodeCheckedHandler(item);
             // 处理祖先节点的勾选逻辑
-            this.updateAncestorNodeCheckedHandler(item);
+            this.updateAncestorNodeCheckedHandler(item, this.dataList);
             // 派发事件
             this.dispatch('NvTree', 'check-click-handler', [event, item]);
         },
@@ -282,6 +295,12 @@ export default {
          */
         titleClick(item) {
             if (item.disabled) {
+                return;
+            }
+            // 开启点击文本，选中勾选框
+            // 此时点击文本选中功能不可用，点击文本等同于勾选
+            if (this.autoCheckBox) {
+                this.checkedClickHandler(new Event('click'), item);
                 return;
             }
             this.dispatch('NvTree', 'title-click-handler', item);

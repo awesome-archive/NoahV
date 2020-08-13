@@ -20,8 +20,8 @@ describe('DatePicker.vue', () => {
                 return !prevMonth && !nextMonth;
             });
             const today = new Date();
-            const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-            const daysInNextMonth = new Date(today.getFullYear(), today.getMonth() + 2, 0).getDate();
+            const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+            const daysInNextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
             expect(daysInCurrentMonth + daysInNextMonth).to.equal(calendarCells.length);
             done();
         });
@@ -237,7 +237,7 @@ describe('DatePicker.vue', () => {
         picker.openPicker();
         vm.$nextTick(() => {
             const displayField = vm.$el.querySelector('.input');
-            const clickableCells = vm.$el.querySelectorAll('.cell');
+            const clickableCells = vm.$el.querySelector('.right-panel').querySelectorAll('.cell');
             const lastMonthClass = 'last-month';
             const firstDayInMonthIndex = [...clickableCells].findIndex(cell => !cell.classList.contains(lastMonthClass));
             clickableCells[firstDayInMonthIndex].firstElementChild.click();
@@ -413,8 +413,7 @@ describe('DatePicker.vue', () => {
                 const text = vm.$el.querySelector('.date-picker-selected').innerText;
                 expect(text).contains('15天');
                 expect(vm.$data.click).to.be.equal(true);
-                const hotkey = vm.$children[0].$children[1];
-                hotkey.resetSidebar();
+                vm.$children[0].clearHotKeys();
                 vm.$nextTick(() => {
                     const selectedHotKey = vm.$el.querySelector('.sidebar-hotkey').querySelector('.date-picker-selected');
                     expect(selectedHotKey).to.be.equal(null);
@@ -489,8 +488,7 @@ describe('DatePicker.vue', () => {
                 expect(text).contains('15天');
                 expect(vm.$data.click).to.be.equal(true);
 
-                const hotkey = vm.$children[0].$children[1];
-                hotkey.resetHotKeys();
+                vm.$children[0].clearHotKeys();
                 vm.$nextTick(() => {
                     const selectedHotKey = vm.$el.querySelector('.hot-keys-wrapper').querySelector('.date-picker-selected');
                     expect(selectedHotKey).to.be.equal(null);
@@ -567,8 +565,7 @@ describe('DatePicker.vue', () => {
                 const text = vm.$el.querySelector('.date-picker-selected').innerText;
                 expect(text).contains('15天');
                 expect(vm.$data.click).to.be.equal(true);
-                const hotkey = vm.$children[0].$children[2];
-                hotkey.resetTopBar();
+                vm.$children[0].clearHotKeys();
                 vm.$nextTick(() => {
                     const selectedHotKey = vm.$el.querySelector('.date-picker-top-bar').querySelector('.date-picker-selected');
                     expect(selectedHotKey).to.be.equal(null);

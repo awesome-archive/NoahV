@@ -1,7 +1,7 @@
 <template>
     <div>
         <div class="time-panel" v-if="['datetime', 'daterangetime'].indexOf(type) > -1">
-            <label>时间：</label>
+            <label>{{t('datepicker.timeLabel')}}：</label>
             <select v-model="dateValue.startHour" @change="timeChange('left')">
                 <option
                     v-for="(item, i) in dateOptions.hours"
@@ -73,15 +73,17 @@
             </div>
         </div>
         <div class="btn-panel" v-if="confirm">
-            <button type="button" class="reset" @click="reset">清空</button>
-            <button type="button" class="primary" @click="confirmClick">确定</button>
+            <button type="button" class="reset" @click="reset">{{t('datepicker.clear')}}</button>
+            <button type="button" class="primary" @click="confirmClick">{{t('datepicker.ok')}}</button>
         </div>
     </div>
 </template>
 
 <script>
+import mixin from '../../mixins';
 
 export default {
+    mixins: [mixin],
     name: 'NvDatePickerCommonTimePanel',
     data() {
         return {
@@ -89,6 +91,7 @@ export default {
     },
     props: {
         confirm: Boolean,
+        autoFix: Boolean,
         dateValue: Object,
         // 日期时间候选项
         dateOptions: Object,
@@ -115,16 +118,23 @@ export default {
                         this.dateValue.startMinute,
                         this.dateValue.startSecond
                     );
+                    this.$emit('on-date-change');
                 }
             }
             else if (this.type === 'daterangetime') {
                 if (pos === 'left' && this.dateValue.startSelectedDate) {
                     this.setSelectedDate('start');
-                    this.selfHealing('left');
+                    if (this.autoFix) {
+                        this.selfHealing('left');
+                    }
+                    this.$emit('on-date-change');
                 }
                 else if (pos === 'right' && this.dateValue.endSelectedDate) {
                     this.setSelectedDate('end');
-                    this.selfHealing('right');
+                    if (this.autoFix) {
+                        this.selfHealing('right');
+                    }
+                    this.$emit('on-date-change');
                 }
             }
         },
@@ -134,6 +144,10 @@ export default {
          * @param {String} key left/right flag
          */
         selfHealing(key) {
+            if (!this.dateValue.startSelectedDate || !this.dateValue.endSelectedDate) {
+                return;
+            }
+            
             let start = this.dateValue.startSelectedDate.getTime();
             let end = this.dateValue.endSelectedDate.getTime();
             if (start > end) {

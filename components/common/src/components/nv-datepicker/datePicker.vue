@@ -15,6 +15,7 @@
                     class="input"
                     :value="shownDateStr"
                     :style="style.height"
+                    :readonly="readonly"
                     :placeholder="placeholder"
                 />
             </div>
@@ -79,18 +80,19 @@
                     :dateValue="dateValue"
                     :dateOptions="dateOptions"
                     :isDisabledHandler="isDisabledHandler"
-                    @on-date-change="dateChange"
+                    :disabledDateClickTip="disabledDateClickTip"
+                    @on-date-change="dateChange('datePanel')"
                     @close-picker="closePicker"
-                    @reset-side-bar="clearSideBar"
-                    @reset-hot-keys="clearHotKeys"
-                    @reset-top-bar="clearTopBar"
                 >
                 </NvDatePickerDatePanel>
                 <NvDatePickerTimePanel
                     :ref="'saDataPickerTimePanel' + postfix"
+                    :tips="tips"
                     :type="type"
                     :theme="theme"
+                    :trigger="trigger"
                     :confirm="confirm"
+                    :autoFix="autoFix"
                     :dateValue="dateValue"
                     :dateOptions="dateOptions"
                     :timePickerCtrl="timePickerCtrl"
@@ -98,6 +100,7 @@
                     @on-reset="resetTimePanel"
                     @on-confirm="confirmHandler"
                     @on-clear="clearClickHandler"
+                    @on-date-change="dateChange('timePanel')"
                 >
                 </NvDatePickerTimePanel>
             </div>
@@ -117,15 +120,8 @@ import NvDatePickerSidebar from './sidebar';
 import NvDatePickerDatePanel from './datePanel';
 import NvDatePickerTimePanel from './timePanel';
 
-// 日期候选项
-const dateOptions = {
-    years: [],
-    months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-    weekDays: ['日', '一', '二', '三', '四', '五', '六'],
-    hours: [],
-    minutes: [],
-    secondes: []
-};
+import {t} from '../../locale';
+
 export default {
     name: 'NvDatePicker',
     components: {
@@ -145,11 +141,24 @@ export default {
         event: 'on-change'
     },
     props: {
-        value: [Date, Array, String],
+        value: [Date, String, Array],
         setShownTxt: Function,
+        // 面板皮肤风格
         theme: {
             type: String,
             default: 'console'
+        },
+        // 时间显示风格
+        mode: {
+            validator: (value) => {
+                return ['common', 'console'].indexOf(value) > -1;
+            },
+            default: 'console'
+        },
+        tips: {
+            validator: (value) => {
+                return typeof value === 'string';
+            }
         },
         type: {
             validator: function (value) {
@@ -165,7 +174,9 @@ export default {
         },
         placeholder: {
             type: String,
-            default: '请选择时间'
+            default () {
+                return t('datepicker.placeholder')
+            }
         },
         confirm: {
             type: Boolean,
@@ -192,9 +203,23 @@ export default {
                 }
             }
         },
+        autoFix: {
+            type: Boolean,
+            default: false
+        },
         autoClose: {
             type: Boolean,
             default: false
+        },
+        readonly: {
+            type: Boolean,
+            default: true
+        },
+        disabledDateClickTip: {
+            type: String,
+            default () {
+                return t('datepicker.disabledDateTip');
+            }
         }
     },
     data() {
@@ -203,8 +228,6 @@ export default {
             postfix: '',
             // icon样式控制
             iconType: 'calendar',
-            // 日期候选项
-            dateOptions: dateOptions,
             // 时间日期面板控制
             showPickerPanel: false,
             // 显示的格式化后的选中日期
@@ -220,11 +243,11 @@ export default {
                 // 左侧面板的所有日期
                 leftDays: [],
                 // 开始日期小时
-                startHour: '',
+                startHour: 0,
                 // 开始日期分钟
-                startMinute: '',
+                startMinute: 0,
                 // 开始日期秒
-                startSecond: '',
+                startSecond: 0,
                 // 开始日期
                 startDate: '',
                 // 终止日期年份
@@ -236,11 +259,11 @@ export default {
                 // 右侧面板的所有日期
                 rightDays: [],
                 // 终止日期小时
-                endHour: '',
+                endHour: 0,
                 // 终止日期分钟
-                endMinute: '',
+                endMinute: 0,
                 // 终止日期秒
-                endSecond: '',
+                endSecond: 0,
                 // 终止日期
                 endDate: '',
                 // 选中日期，供选择时间点使用
@@ -248,6 +271,23 @@ export default {
                 // 选中日期，供选择时间段使用
                 startSelectedDate: '',
                 endSelectedDate: ''
+            },
+            // 日期候选项
+            dateOptions: {
+                years: [],
+                months: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                weekDays: [
+                    t.call(this, 'datepicker.weeks.sun'), 
+                    t.call(this, 'datepicker.weeks.mon'),
+                    t.call(this, 'datepicker.weeks.tue'),
+                    t.call(this, 'datepicker.weeks.wed'),
+                    t.call(this, 'datepicker.weeks.thu'),
+                    t.call(this, 'datepicker.weeks.fri'),
+                    t.call(this, 'datepicker.weeks.sat')
+                ],
+                hours: [],
+                minutes: [],
+                secondes: []
             }
         };
     },
@@ -265,10 +305,10 @@ export default {
     },
     mounted() {
         // 监听点击面板外部区域的事件
-        document.body.addEventListener('click', this.clickOuterArea, false);
+        window.addEventListener('click', this.clickOuterArea, false);
     },
     beforeDestroy() {
-        document.body.removeEventListener('click', this.clickOuterArea, false);
+        window.removeEventListener('click', this.clickOuterArea, false);
     },
     computed: {
         /**
@@ -416,6 +456,19 @@ export default {
             else {
                 return this.theme;
             }
+        },
+        /**
+         * console风格下，时间面板触发update的方式设置
+         *
+         * @return {String} 触发update的方式
+         */
+        trigger() {
+            if (this.options && this.options.trigger && this.options.trigger === 'blur') {
+                return 'blur';
+            }
+            else {
+                return 'change';
+            }
         }
     },
     watch: {
@@ -469,20 +522,22 @@ export default {
                     if (u.isDate(value)) {
                         if (['date', 'datetime'].indexOf(this.type) > -1) {
                             this.setDate(value);
+                            this.setShortCutHighLight(defaultSelect.text);
                         }
                     }
                     else if (u.isArray(value) && value.length === 2 && u.isDate(value[0]) && u.isDate(value[1])) {
                         if (['daterange', 'daterangetime'].indexOf(this.type) > -1) {
                             this.setDate(value[0], value[1]);
+                            this.setShortCutHighLight(defaultSelect.text);
                         }
                     }
                     this.dateChange();
                 }
-                else if (!this.value) {
+                else if (!this.value){
                     this.defaultInition();
                 }
             }
-            else if (!this.value) {
+            else if (!this.value){
                 this.defaultInition();
             };
             this.initOptions();
@@ -490,13 +545,13 @@ export default {
         initOptions() {
             let minYear, maxYear;
             if (['date', 'datetime'].indexOf(this.type) > -1) {
-                let date = this.dateValue.selectedDate || this.dateValue.startDate;
+                let date = this.dateValue.selectedDate || this.dateValue.startDate || datePickerUtils.getCurrent(this);
                 minYear = date.getFullYear();
                 maxYear = date.getFullYear();
             }
             else if (['daterange', 'daterangetime'].indexOf(this.type) > -1) {
-                let startDate = this.dateValue.startSelectedDate || this.dateValue.startDate;
-                let endDate = this.dateValue.endSelectedDate || this.dateValue.endDate;
+                let startDate = this.dateValue.startSelectedDate || this.dateValue.startDate || datePickerUtils.getCurrent(this);
+                let endDate = this.dateValue.endSelectedDate || this.dateValue.endDate || datePickerUtils.getCurrent(this);
                 minYear = u.min([startDate.getFullYear(), endDate.getFullYear()]);
                 maxYear = u.max([startDate.getFullYear(), endDate.getFullYear()]);
             }
@@ -523,7 +578,7 @@ export default {
             }
         },
         defaultInition() {
-            let now = new Date();
+            let now = datePickerUtils.getCurrent(this);
             if (['date', 'datetime'].indexOf(this.type) > -1) {
                 this.dateValue.startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 let updateStartKeys = [
@@ -537,16 +592,16 @@ export default {
                 this.updateDateValue(this.dateValue, updateStartKeys, this.dateValue.startDate);
             }
             else if (['daterange', 'daterangetime'].indexOf(this.type) > -1) {
-                if (now.getMonth() >= 11) {
-                    this.dateValue.endYear = now.getFullYear() + 1;
-                    this.dateValue.endMonth = 0;
+                if (now.getMonth() <= 0) {
+                    this.dateValue.startYear = now.getFullYear() - 1;
+                    this.dateValue.startMonth = 11;
                 }
                 else {
-                    this.dateValue.endYear = now.getFullYear();
-                    this.dateValue.endMonth = now.getMonth() + 1;
+                    this.dateValue.startYear = now.getFullYear();
+                    this.dateValue.startMonth = now.getMonth() - 1;
                 }
-                this.dateValue.startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                this.dateValue.endDate = new Date(this.dateValue.endYear, this.dateValue.endMonth, 1);
+                this.dateValue.startDate = new Date(this.dateValue.startYear, this.dateValue.startMonth, 1);
+                this.dateValue.endDate = new Date(now.getFullYear(), now.getMonth(), 1);
                 let updateStartKeys = [
                     'startYear',
                     'startMonth',
@@ -571,7 +626,7 @@ export default {
          * 抛出on-change事件
          * 只有是内部发起的改变会触发
          */
-        dateChange() {
+        dateChange(flag) {
             if (['date', 'datetime'].indexOf(this.type) > -1) {
                 this.$emit('on-change', this.dateValue.selectedDate);
                 if (this.$refs['saDatePickerDatePanel' + this.postfix]) {
@@ -586,8 +641,11 @@ export default {
                     this.$emit('on-change', [this.dateValue.startSelectedDate, this.dateValue.endSelectedDate]);
                 }
                 if (this.$refs['saDatePickerDatePanel' + this.postfix]) {
-                    this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('left');
+                    this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('right');
                 }
+            }
+            if (flag) {
+                this.clearHotKeys();
             }
         },
         isDifferent(value) {
@@ -653,30 +711,26 @@ export default {
          * @return {string} 返回格式化后的日期字符串
          */
         getFormatDate(dateSet) {
-            let date = '';
             let startDate = dateSet[0] || '';
             let endDate = dateSet[1] || '';
             let fommater = ['date', 'daterange'].indexOf(this.type) > -1 ? 'YYYY-MM-DD' : 'YYYY-MM-DD HH:mm:ss';
-            if (startDate && ['date', 'datetime'].indexOf(this.type) > -1) {
-                try {
-                    date = moment(startDate).format(this.dateFormat || fommater);
+            try {
+                if (startDate && ['date', 'datetime'].indexOf(this.type) > -1) {
+                    return moment(startDate).format(this.dateFormat || fommater);
                 }
-                catch (e) {
+                else if (startDate && endDate && ['daterange', 'daterangetime'].indexOf(this.type) > -1) {
+                    return moment(startDate).format(this.dateFormat || fommater)
+                        + ' - ' + moment(endDate).format(this.dateFormat || fommater);
                 }
-                return date;
+                else if (startDate && !endDate && this.mode === 'common' && ['daterange', 'daterangetime'].indexOf(this.type) > -1) {
+                    return moment(startDate).format(this.dateFormat || fommater) + ' - ' + t('datepicker.shownDateTip');
+                }
+                else {
+                    return '';
+                }
             }
-            else if (startDate && endDate && ['daterange', 'daterangetime'].indexOf(this.type) > -1) {
-                try {
-                    date = moment(startDate).format(this.dateFormat || fommater)
-                        + ' - '
-                        + moment(endDate).format(this.dateFormat || fommater);
-                }
-                catch (e) {
-                }
-                return date;
-            }
-            else {
-                return date;
+            catch (e) {
+                return '';
             }
         },
         /**
@@ -710,7 +764,7 @@ export default {
         setDate(startDate, endDate) {
             if (['date', 'datetime'].indexOf(this.type) > -1) {
                 if (startDate && u.isDate(startDate)) {
-                    if (this.isDisabledHandler(startDate)) {
+                    if (this.isDisabledHandler(startDate, [startDate])) {
                         //cann't set disabled date
                         return;
                     }
@@ -727,10 +781,13 @@ export default {
                         this.updateDateValue(this.dateValue, updateKeys, this.dateValue.selectedDate);
                     }
                 }
+                if (this.showPickerPanel) {
+                    this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('left');
+                }
             }
             else if (['daterange', 'daterangetime'].indexOf(this.type) > -1) {
                 if (startDate && endDate && u.isDate(startDate) && u.isDate(endDate)) {
-                    if (this.isDisabledHandler(startDate) || this.isDisabledHandler(endDate)) {
+                    if (this.isDisabledHandler(startDate, [startDate, endDate]) || this.isDisabledHandler(endDate, [startDate, endDate])) {
                         // cann't set disabled date
                         return;
                     }
@@ -755,12 +812,11 @@ export default {
                         ];
                         this.updateDateValue(this.dateValue, updateStartKeys, this.dateValue.startSelectedDate);
                         this.updateDateValue(this.dateValue, updateEndKeys, this.dateValue.endSelectedDate);
-                        
                     }
                 }
-            }
-            if (this.showPickerPanel) {
-                this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('left');
+                if (this.showPickerPanel) {
+                    this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('right');
+                }
             }
         },
         /**
@@ -787,15 +843,16 @@ export default {
          * 处理不可选日期
          *
          * @param {Date} date 当前日期
+         * @param {Date} targetDate 将要生效的日期
          * @return {boolean} 返回当前日期是否可选
          */
-        isDisabledHandler(date) {
+        isDisabledHandler(date, targetDate) {
             if (this.options && this.options.disabledHandler && typeof this.options.disabledHandler === 'function') {
                 let selectedDate = ['date', 'datetime'].indexOf(this.type) > -1 ? this.dateValue.selectedDate : {
                     "startSelectedDate": this.dateValue.startSelectedDate,
                     "endSelectedDate": this.dateValue.endSelectedDate
                 };
-                return this.options.disabledHandler(date, selectedDate);
+                return this.options.disabledHandler(date, selectedDate, targetDate || []);
             }
             else {
                 return false;
@@ -845,6 +902,10 @@ export default {
          *
          */
         clickOuterArea(e) {
+            // 面板关闭状态下，不执行判断逻辑
+            if (!this.showPickerPanel) {
+                return;
+            }
             let event = e || window.event;
             let target = event.target || event.srcElement;
             let domWrapper = this.$refs['date-picker-wrapper-refs'];
@@ -880,6 +941,7 @@ export default {
                 this.$set(this.dateValue, 'startSelectedDate', '');
                 this.$set(this.dateValue, 'endSelectedDate', '');
                 this.resetTimePanel();
+                this.clearHotKeys();
                 if (this.showPickerPanel) {
                     this.clearClickHandler();
                 }
@@ -893,16 +955,8 @@ export default {
         clearClickHandler() {
             if (this.showPickerPanel) {
                 this.clearDateTable();
-            }
-            if (this.hotKeyCtrl.inner) {
-                this.clearSideBar();
-            }
-            else if (this.hotKeyCtrl.outer) {
                 this.clearHotKeys();
-            }
-            else if (this.hotKeyCtrl.top) {
-                this.clearTopBar();
-            }
+            }            
             this.$emit('on-clear');
         },
         /**
@@ -913,31 +967,14 @@ export default {
             this.$refs['saDatePickerDatePanel' + this.postfix].clearDateTable();
         },
         /**
-         * 点击清空按钮时的附带处理逻辑
+         * 点击快捷键选中逻辑
          *
          */
         clearHotKeys() {
-            if (this.hotKeyCtrl.outer) {
-                this.$refs['saDatePickerHotKeys' + this.postfix].resetHotKeys();
-            }
-        },
-        /**
-         * 点击清空按钮时的附带处理逻辑
-         *
-         */
-        clearSideBar() {
-            if (this.hotKeyCtrl.inner) {
-                this.$refs['saDatePickerSidebar' + this.postfix].resetSidebar();
-            }
-        },
-        /**
-         * 点击清空按钮时的附带处理逻辑
-         *
-         */
-        clearTopBar() {
-            if (this.hotKeyCtrl.top) {
-                this.$refs['saDatePickerTopBar' + this.postfix].resetTopBar();
-            }
+            let shortcuts = this.options ? (this.options.shortcuts || []): [];
+            shortcuts.forEach(item => {
+                this.$set(item, 'selected', false);
+            });
         },
         /**
          * 重置时间面板
@@ -964,8 +1001,17 @@ export default {
                 if (['date', 'datetime'].indexOf(this.type) > -1 && this.dateValue.selectedDate) {
                     this.setDate(this.dateValue.selectedDate);
                 }
+                else if (['date', 'datetime'].indexOf(this.type) > -1 && !this.dateValue.selectedDate) {
+                    this.defaultInition();
+                }
                 else if (['daterange', 'daterangetime'].indexOf(this.type) > -1 && this.dateValue.startSelectedDate && this.dateValue.endSelectedDate) {
                     this.setDate(this.dateValue.startSelectedDate, this.dateValue.endSelectedDate);
+                }
+                else if (['daterange', 'daterangetime'].indexOf(this.type) > -1 && !(this.dateValue.startSelectedDate && this.dateValue.endSelectedDate)) {
+                    this.defaultInition();
+                    if (this.$refs['saDatePickerDatePanel' + this.postfix]) {
+                        this.$refs['saDatePickerDatePanel' + this.postfix].headerChange('right');
+                    }
                 }
                 this.$emit('on-open');
             });
@@ -988,6 +1034,23 @@ export default {
                     for (let i in shortcuts) {
                         if (shortcuts.hasOwnProperty(i) && shortcuts[i].hasOwnProperty('id')) {
                             if (shortcuts[i]['id'] === id) {
+                                this.$set(shortcuts[i], 'selected', true);
+                            }
+                            else {
+                                this.$set(shortcuts[i], 'selected', false);
+                            }
+                        }
+                    }
+                });
+            }
+        },
+        setShortCutHighLight(text) {
+            let shortcuts = this.options.shortcuts;
+            if (shortcuts && shortcuts.length) {
+                this.$nextTick(() => {
+                    for (let i in shortcuts) {
+                        if (shortcuts.hasOwnProperty(i) && shortcuts[i].hasOwnProperty('text')) {
+                            if (shortcuts[i]['text'] === text) {
                                 this.$set(shortcuts[i], 'selected', true);
                             }
                             else {

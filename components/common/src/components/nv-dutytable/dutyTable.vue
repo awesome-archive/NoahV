@@ -41,8 +41,8 @@
                             <span>{{getTimeFormatHourMinute()}}</span>
                         </li>
                         <li v-for="col in row.duty"
-                            v-if="col.nameArr"
-                            :class="['col-item', {'col-item-no-data': !col.nameArr.length}]"
+                            v-if="col"
+                            :class="['col-item', {'col-item-no-data': !(col.nameArr && col.nameArr.length)}, {'col-item-no-work': !col.workingDay}]"
                             :title="dutyShowText(col)"
                             :style="calculateDutyItemStyle(col)"
                         >{{dutyShowText(col)}}</li>
@@ -56,6 +56,7 @@
 <script>
 import datePicker from './date-picker';
 import CONSTANTS from './CONSTANTS';
+import {t} from '../../locale';
 
 const prefix = 'noahv-duty-table';
 
@@ -101,7 +102,9 @@ export default {
         emptyText: {
             type: String,
             required: false,
-            default: CONSTANTS.emptyText
+            default() {
+                return t(CONSTANTS.emptyText);
+            }
         },
         // 色块最小宽度
         colorBlockMinWidth: {
@@ -114,6 +117,18 @@ export default {
             type: Boolean,
             required: false,
             default: false
+        },
+        workingDay: {
+            type: Array,
+            required: false,
+            default: () => CONSTANTS.defaultWorkingDay
+        },
+        restDayText: {
+            type: String,
+            required: false,
+            default() {
+                return t(CONSTANTS.restDayText);
+            }
         }
     },
     data() {
@@ -158,11 +173,27 @@ export default {
                 return loopColor;
             }
         },
+        // 经过校验的工作日
+        workingDayValidate: {
+            get() {
+                if (!(this.workingDay instanceof Array) || !this.workingDay.length) {
+                    return CONSTANTS.defaultWorkingDay;
+                }
+                const curDay = this.startTime.getDay();
+                let workingDay = [...this.workingDay];
+                if (!this.workingDay.includes(curDay)) {
+                    workingDay.push(curDay);
+                    this.$emit('ACWorkingDay');
+                }
+                return [...new Set(workingDay)].map(day => Math.round(+day)).filter(day => day < 7 && day > -1);
+            }
+        },
         // 监听所有 props 对象
         watchProps() {
-            const {styleConfig, cycle, handOverTime, loop, loopColor, emptyText, colorBlockMinWidth, splitShow} = this;
-            return {styleConfig, cycle, handOverTime, loop, loopColor, emptyText, colorBlockMinWidth, splitShow};
-        }
+            const {styleConfig, cycle, handOverTime, loop, loopColor, emptyText, colorBlockMinWidth, splitShow, workingDayValidate} = this;
+            return {styleConfig, cycle, handOverTime, loop, loopColor, emptyText, colorBlockMinWidth, splitShow, workingDayValidate};
+        },
+
     },
     watch: {
         'watchProps': {
@@ -255,20 +286,32 @@ export default {
                 tableArr.forEach(row => {
                     row.duty = [];
                     row.time.forEach(col => {
-                        // 遍历日期，获取每个日期下的值班组的商数，默认 flex 为 1，均分
+                        const colDay = new Date(col.year, col.month, col.date).getDay();
                         const diffDay = this.calculateDiffDay(col);
-                        const quotient = Math.floor(diffDay / this.cycle);
-                        row.duty.push({quotient, flex: 1, diffDay});
+                        if (this.isWorkingDay(colDay)) {
+                            // 遍历日期，获取每个日期下的值班组的商数，默认 flex 为 1，均分
+                            const quotient = Math.floor(diffDay / this.cycle);
+                            row.duty.push({quotient, flex: 1, diffDay, workingDay: true});
+                        }
+                        else {
+                            row.duty.push({flex: 1, diffDay, workingDay: false});
+                        }
                     });
                     if (this.handOverTime !== '00:00') {
                         // 如果交接时间不为 0 点，必然出现上一行末尾，便宜到这一行的组，unshift 推入
-                        const firstWeekDay = row.time[0];
-                        const diffDay = this.calculateDiffDay({
-                            ...firstWeekDay,
-                            date: firstWeekDay.date - 1
-                        });
-                        const quotient = Math.floor(diffDay / this.cycle);
-                        row.duty.unshift({quotient, flex: this.calculateRatio(), diffDay});
+                        const beforeFirstWeekDay = {
+                            ...row.time[0],
+                            date: row.time[0].date - 1
+                        };
+                        const diffDay = this.calculateDiffDay(beforeFirstWeekDay);
+                        const colDay = new Date(beforeFirstWeekDay.year, beforeFirstWeekDay.month, beforeFirstWeekDay.date).getDay();
+                        if (this.isWorkingDay(colDay)) {
+                            const quotient = Math.floor(diffDay / this.cycle);
+                            row.duty.unshift({quotient, flex: this.calculateRatio(), diffDay, workingDay: true});
+                        }
+                        else {
+                            row.duty.unshift({flex: this.calculateRatio(), diffDay, workingDay: false});
+                        }
 
                         // 修改本行最后一组的 flex 占比。
                         row.duty.push({
@@ -297,8 +340,8 @@ export default {
                     });
                     row.duty = formatDuty.map(item => ({
                         ...item,
-                        nameArr: this.loop.slice(item.quotient % this.loop.length).shift(),
-                        color: this.loopColor.slice(item.quotient % this.loopColor.length).shift()
+                        nameArr: item.workingDay && this.loop.slice(item.quotient % this.loop.length).shift(),
+                        color: item.workingDay && this.loopColor.slice(item.quotient % this.loopColor.length).shift()
                     }));
                 });
             }
@@ -315,7 +358,49 @@ export default {
          */
         calculateDiffDay({year, month, date}) {
             const someDay = new Date(year, month, date);
-            return (someDay - this.startTime) / 1000 / 60 / 60 / 24;
+            let diffDay = (someDay - this.startTime) / 1000 / 60 / 60 / 24;
+
+            // 如果工作日是默认 7 天，无需经过额外计算，直接返回 diffDay
+            if (this.workingDayValidate.length === 7) {
+                return diffDay;
+            }
+            return this.calculateDiffDayByWorkingDay(diffDay);
+        },
+
+        /**
+         * 剔除休息日，计算某天与今天的时间差
+         *
+         * @param {number} diffDay 时间差
+         * @return {number} 时间差
+         */
+        calculateDiffDayByWorkingDay(diffDay) {
+            const weekNum = diffDay > 0 ? Math.floor(diffDay / 7) : Math.ceil(diffDay / 7);
+            const extraDay = diffDay - weekNum * 7;
+            let realDiffDay = weekNum * this.workingDayValidate.length;
+
+            if (extraDay !== 0) {
+                const diffDayLen = (() => {
+                    const diffDayArr = [];
+                    const getDay = i => new Date(+new Date(this.startTime)
+                        + i * 60 * 60 * 24 * 1000
+                        + weekNum * 7 * 60 * 60 * 24 * 1000).getDay();
+                    if (extraDay > 0) {
+                        for (let i = 1; i <= extraDay; i++) {
+                            diffDayArr.push(getDay(i));
+                        }
+                    }
+                    else {
+                        for (let i = -1; i >= extraDay; i--) {
+                            diffDayArr.unshift(getDay(i));
+                        }
+                    }
+                    return diffDayArr;
+                })
+                    .call(this)
+                    .filter(this.isWorkingDay).length;
+                return diffDay > 0 ? realDiffDay + diffDayLen : realDiffDay - diffDayLen;
+            }
+            return realDiffDay;
         },
 
         /**
@@ -344,7 +429,7 @@ export default {
             }
             let timeConfig = row.time[0].isHidden ? row.time[1] : row.time[0];
             const {year, month, date} = timeConfig;
-            const currentTime = new Date();
+            const currentTime = +this.getDateByTimezone();
             const firstWeekDay = new Date(year, month, date);
             const lastWeekDay = new Date(year, month, date + 6, 23, 59, 59);
             return {
@@ -355,14 +440,18 @@ export default {
             };
         },
 
+        isWorkingDay(day) {
+            return this.workingDayValidate.includes(day);
+        },
+
         /**
          * 获取当前时间，时间格式为 HH:mm
          *
          * @return {string} 当前时间
          */
         getTimeFormatHourMinute() {
-            let hours = ('00' + new Date().getHours()).slice(-2);
-            let minutes = ('00' + new Date().getMinutes()).slice(-2);
+            let hours = ('00' + this.getDateByTimezone().getHours()).slice(-2);
+            let minutes = ('00' + this.getDateByTimezone().getMinutes()).slice(-2);
             return hours + ':' + minutes;
         },
 
@@ -373,7 +462,12 @@ export default {
          * @return {string} 显示文本
          */
         dutyShowText(col) {
-            return col.nameArr.length ? col.nameArr.map(item => item.name).join('、') : this.emptyText;
+            if (col.workingDay) {
+                return col.nameArr && col.nameArr.length ? col.nameArr.map(item => item.name).join('、') : this.emptyText;
+            }
+            else {
+                return this.restDayText;
+            }
         },
 
         /**
@@ -392,7 +486,7 @@ export default {
                 && +this.startTime + diffSeconds <= +this.maxDate
                     ? 'visible'
                     : 'hidden',
-                backgroundColor: col.nameArr.length && col.color,
+                backgroundColor: col.nameArr && col.nameArr.length && col.color,
                 flex: col.flex
             };
         },
@@ -407,7 +501,7 @@ export default {
                 return this.currentDutyGroup;
             }
             try {
-                const diffDay = (CONSTANTS.today - this.startTime) / 1000 / 3600 / 24;
+                const diffDay = (this.today - this.startTime) / 1000 / 3600 / 24;
                 for (let row = 0; row < this.tableArr.length; row++) {
                     for (let col = 0; this.tableArr[row].duty; col++) {
                         if (this.tableArr[row].duty[col].diffDay === diffDay) {

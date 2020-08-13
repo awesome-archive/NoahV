@@ -6,7 +6,7 @@
             :tip="data.tip"
             :items="data.items"
             :search="data.search"
-            :editable="data.editable"
+            :editMode="data.editable"
             :checkbox="data.checkbox"
             :multiple="data.multiple"
             :accordion="data.accordion"
@@ -14,6 +14,7 @@
             :appendIcon="data.appendIcon"
             :removeIcon="data.removeIcon"
             :editIcon="data.editIcon"
+            :autoCheckBox="data.autoCheckBox"
             @on-check-change="onCheckChange"
             @on-select-change="onSelectChange"
             @on-expand-change="onExpandChange">
@@ -35,6 +36,7 @@ export default {
                 editable: false,
                 checkbox: false,
                 multiple: false,
+                autoCheckBox: false,
                 appendLabel: 'Append',
                 removeLabel: 'Delete',
                 editLabel: 'Edit',
@@ -122,7 +124,7 @@ export default {
         onSelectChange(item, items) {
             console.log('on-select-change watched');
         },
-        onCheckChange(item, items) {
+        onCheckChange(event, item, items) {
             console.log('on-check-change watched');
         },
         onExpandChange(item) {
@@ -132,5 +134,8 @@ export default {
 };
 </script>
 
-<style lang="less" scoped>
+<style lang="less">
+    .node-wrapper .panel ul {
+        margin-bottom: 0;
+    }
 </style>

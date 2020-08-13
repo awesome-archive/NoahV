@@ -4,6 +4,7 @@
  */
 
 import CONSTANTS from './CONSTANTS';
+import {t} from '../../locale';
 
 function isDate(date) {
     return Object.prototype.toString.call(date) === '[object Date]';
@@ -14,27 +15,37 @@ export default {
         defaultSelectedYear: {
             type: [Number, String],
             required: false,
-            default: CONSTANTS.currentYear
+            default() {
+                return CONSTANTS.today.getFullYear();
+            }
         },
         defaultSelectedMonth: {
             type: [Number, String],
             required: false,
-            default: CONSTANTS.currentMonth + 1
+            default() {
+                return CONSTANTS.today.getMonth() + 1;
+            }
         },
         defaultMaxDate: {
             type: [Date, String, Object],
             required: false,
-            default: () => CONSTANTS.maxDate
+            default() {
+                return new Date(CONSTANTS.today.getFullYear() + 50, 11, 31);
+            }
         },
         defaultMinDate: {
             type: [Date, String, Object],
             required: false,
-            default: () => CONSTANTS.minDate
+            default() {
+                return new Date(CONSTANTS.today.getFullYear() - 5, 0, 1);
+            }
         },
         defaultStartTime: {
             type: [Date, String, Object],
             required: false,
-            default: () => CONSTANTS.today
+            default() {
+                return CONSTANTS.today;
+            }
         }
     },
     data() {
@@ -44,6 +55,22 @@ export default {
         };
     },
     computed: {
+        today: {
+            get() {
+                const today = this.getDateByTimezone();
+                return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            }
+        },
+        currentYear: {
+            get() {
+                return this.today.getFullYear();
+            }
+        },
+        currentMonth: {
+            get() {
+                return this.today.getMonth();
+            }
+        },
         preBtnDisabled: {
             get() {
                 return this.selectedYear === this.minYear && this.selectedMonth === this.minMonth;
@@ -61,7 +88,7 @@ export default {
         },
         weekArr: {
             get() {
-                return CONSTANTS.weekArr;
+                return t(CONSTANTS.weekArr);
             }
         },
         yearArr: {
@@ -70,7 +97,9 @@ export default {
                 for (let i = this.minYear; i <= this.maxYear; i++) {
                     yearArr.push(i);
                 }
-                return yearArr.length ? yearArr : CONSTANTS.yearArr;
+                return yearArr.length
+                    ? yearArr
+                    : new Array(6).fill(0).map((year, index) => this.today.getFullYear() - 3 + index);
             }
         },
         maxDate: {
@@ -128,6 +157,11 @@ export default {
                         new Date(this.defaultStartTime).getDate());
             }
         },
+        getStartTimeDay: {
+            get() {
+                return this.startTime.getDay();
+            }
+        },
         // 监听所有 props 对象
         watchTime() {
             const {defaultSelectedYear, defaultSelectedMonth, defaultMaxDate, defaultMinDate, startTime} = this;
@@ -149,6 +183,9 @@ export default {
         }
     },
     methods: {
+        getDateByTimezone(date = new Date()) {
+            return CONSTANTS.getDateByTimezone.call(this, date);
+        },
 
         /**
          * 时间改变函数
@@ -179,16 +216,16 @@ export default {
                     break;
                 }
                 case 'year': {
-                    this.selectedYear = value || CONSTANTS.currentYear;
+                    this.selectedYear = value || this.currentYear;
 
                     // 防止例如 2019 3 不可选 选择2020 3 切回 2019 选中的情况
                     if (this.monthDisabled(this.selectedMonth)) {
-                        this.selectedMonth = CONSTANTS.currentMonth + 1;
+                        this.selectedMonth = this.currentMonth + 1;
                     }
                     break;
                 }
                 case 'month': {
-                    this.selectedMonth = value || CONSTANTS.currentMonth + 1;
+                    this.selectedMonth = value || this.currentMonth + 1;
                 }
             }
             this.$emit('on-change', {year: this.selectedYear, month: this.selectedMonth});

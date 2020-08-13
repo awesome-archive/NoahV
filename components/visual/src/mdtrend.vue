@@ -28,10 +28,10 @@ import chartlinePng from './assets/img/trend/chartline.png';
 import chartnormalPng from './assets/img/trend/chartnormal.png';
 import chartstackPng from './assets/img/trend/chartstack.png';
 
+import {t} from './locale';
+import mixin from './mixins';
 
-const NODATATIP = '无数据';
-const ERRORCONFIG = '配置信息出错';
-const TITLE = '趋势图标题';
+
 const HEIGHT = 320;
 const TIMING = 60;
 const DEFAULTTIME = 'before(2h)';
@@ -43,6 +43,7 @@ const DEFAULT_REQUEST_TYPE = 'post';
 
 let timeFormatter = 'YYYY-MM-DD HH:mm:ss';
 let widgetConf = {};
+const numUnit = ['K', 'M', 'G', 'T', 'P', 'E'];
 
 
 /**
@@ -101,6 +102,7 @@ function findEventsByTimestamp(events, t, etype) {
                     temp.name = type.name;
                     temp.desc = evt.detail;
                     temp.index = index;
+                    temp.color = type.color;
 
                     // The event contains the total number
                     temp.count = len;
@@ -113,7 +115,21 @@ function findEventsByTimestamp(events, t, etype) {
     }
     else if (etype === 'point') {
         u.each(events, evt => {
-            if (t === evt[0]) {
+
+            // 兼容自定义异常点的形式
+            if (Object.prototype.toString.call(evt) === '[object Object]') {
+                u.find(evt.data, (item) => {
+                    if (item[0] === t) {
+                        data.push({
+                            name: evt.name,
+                            value: item[1],
+                            color: evt.color
+                        })
+                    }
+                     
+                });
+            }
+            else if (t === evt[0]) {
                 data.push(evt);
             }
         });
@@ -154,7 +170,7 @@ function handleTrendTime(times, contrast, timemap) {
             basetime = tt;
         }
     });
-    timemap[times[0].replace(/[-/:\s]*/g, '')] = '当前时间';
+    timemap[times[0].replace(/[-/:\s]*/g, '')] = t('mdtrend.currentTime');
 
     // calculate the time of the ring array in the same period
     if (basetime.length === 2) {
@@ -206,8 +222,8 @@ function handleTrendTime(times, contrast, timemap) {
             if (item.indexOf('d') !== -1 || item.indexOf('w') !== -1) { // 1d, 1w 这种的
                 let mt = item.match(/(\d+)(\w+)/);
                 let map = {
-                    'd': '天前',
-                    'w': '周前'
+                    'd': t('mdtrend.dayBefore'),
+                    'w': t('mdtrend.weekBefore')
                 };
                 timemap[mapkey] = mt[1] + map[mt[2]];
             }
@@ -220,17 +236,24 @@ function handleTrendTime(times, contrast, timemap) {
 }
 
 
-function shortValue(value) {
-    if (typeof value === 'number' && value >= 1000000000) {
-        return Math.ceil(value / 1000000000) + 'G';
+function shortValue(value, number = 1) {
+    if (value < 1000 || typeof value !== 'number') {
+        return value;
     }
-    if (typeof value === 'number' && value >= 1000000) {
-        return Math.ceil(value / 1000000) + 'M';
+    let formatNumber = value;
+    for (let i = 0; i < numUnit.length; i++) {
+        if (value < Math.pow(1000, i + 2) || i === numUnit.length - 1) {
+            // 保留一位小数
+            formatNumber = (value / Math.pow(1000, i + 1)).toFixed((value % Math.pow(1000, i + 1)) === 0
+                ? number
+                : Math.max(1, number)) + numUnit[i];
+            break;
+        }
+        else {
+            continue;
+        }
     }
-    else if (typeof value === 'number' && value >= 1000) {
-        return Math.ceil(value / 1000) + 'K';
-    }
-    return value;
+    return formatNumber;
 }
 
 // Change the type of Chart
@@ -327,7 +350,7 @@ let WarningEvents = {
             let xAxisMin = Number.MAX_VALUE;
 
             u.each(series, item => {
-                if (item.name === '正常范围' || item.name === '异常点' || !item.data) {
+                if (item.name === t() || item.name === '异常点' || !item.data) {
                     return;
                 }
                 max = max > item.dataMax ? max : item.dataMax;
@@ -416,11 +439,11 @@ let CustomEvents = {
                 }
                 else if (this.extraUrls && this.extraUrls.customEventsUrl) {
                     this.$wRequest.post(this.extraUrls.customEventsUrl, params).then(data => {
-                        this.eventTypes = [];
-                        u.each(data.data, item => {
-                            this.eventTypes.push(item);
-                        });
-                        this.renderCustomEvents(chart, this.eventTypes);
+                        let res = data.data;
+                        if (res && res.success) {
+                            this.eventTypes = res.data;
+                            this.renderCustomEvents(chart, res.data);
+                        }
                     });
                 }
             }
@@ -463,12 +486,12 @@ let CustomEvents = {
                         type: 'line',
                         silent: false,
                         itemStyle: {
-                            color: bgColor[(index % bgColor.length)]
+                            color: eventType.color || bgColor[(index % bgColor.length)]
                         },
                         markArea: {
                             data: events,
                             itemStyle: {
-                                color: bgColor[(index % bgColor.length)],
+                                color: eventType.color || bgColor[(index % bgColor.length)],
                                 opacity: 0.4
                             }
                         }
@@ -484,9 +507,10 @@ let CustomEvents = {
             if (evts.length > 0) {
                 u.each(evts, (evt, i) => {
                     if (i === 0) {
+                        let color = evt.color || bgColor[evt.index];
                         let spanInnerHTML = '<dd class="echarts-tooltip-item" '
                             + 'style="color:'
-                            + bgColor[evt.index]
+                            + color
                             + '">'
                             + evt.name
                             + ': </dd>';
@@ -551,8 +575,11 @@ let Points = {
                 }
                 else if (this.extraUrls && this.extraUrls.trendPointsUrl){
                     this.$wRequest.post(this.extraUrls.trendPointsUrl, params).then(data => {
-                        this.abnormals = data.data || [];
-                        this.renderAbnormals(chart, this.abnormals);
+                        let res = data.data;
+                        if (res && res.success) {
+                            this.abnormals = res.data || [];
+                            this.renderAbnormals(chart, this.abnormals);
+                        }
                     });
                 }
             }
@@ -573,26 +600,29 @@ let Points = {
             let series = option.series;
 
             if (series.length > 0 && abnormals.length) {
-                option.series.push({
-                    name: '异常点',
-                    type: 'line',
-                    silent: false,
-                    itemStyle: {
-                        color: '#f00'
-                    },
-                    markPoint: {
-                        data: u.map(abnormals, item => {
-                            return {
-                                coord: [item[0], item[3]]
-                            };
-                        }),
-                        symbol: 'square',
-                        symbolSize: 12,
+                u.each(abnormals, list => {
+                    option.series.push({
+                        name: list.name || '异常点',
+                        type: 'line',
+                        silent: false,
                         itemStyle: {
-                            color: '#f00'
+                            color: list.color || '#f00'
+                        },
+                        markPoint: {
+                            data: u.map(list.data, item => {
+                                return {
+                                    coord: [item[0], item[1]]
+                                };
+                            }),
+                            symbol: list.symbol || 'square',
+                            symbolSize: list.size || 12,
+                            itemStyle: {
+                                color: list.color || '#f00'
+                            }
                         }
-                    }
+                    });
                 });
+                
                 chart.setOption(option);
             }
         },
@@ -609,8 +639,19 @@ let Points = {
             let conf = toolTipObj.conf;
             if (evts.length > 0) {
                 u.each(evts, evt => {
-                    let cur = evt[3];
-                    htm.push('<dd class="echarts-tooltip-item echarts-tooltip-point-item"><span>异常点: </span>'
+                    let cur;
+                    let name;
+                    let style = '';
+                    if (Object.prototype.toString.call(evt) === '[object Object]') {
+                        cur = evt.value;
+                        name = evt.name;
+                        style = `style="color: ${evt.color};"`;
+                    }
+                    else {
+                        cur = evt[3];
+                        name = '异常点'
+                    }
+                    htm.push(`<dd class="echarts-tooltip-item echarts-tooltip-point-item"><span ${style}>${name}: </span>`
                         + mdutil.numberFormat(cur, conf.style.decimals) + '</dd>');
                 });
             }
@@ -679,7 +720,7 @@ export default {
         }
     },
     name: 'NvMDTrend',
-    mixins: [ChartType, WarningEvents, CustomEvents, Points],
+    mixins: [ChartType, WarningEvents, CustomEvents, Points, mixin],
     components: {nvMask},
     data() {
         let height = this.params ? this.params.height || HEIGHT : HEIGHT;
@@ -870,7 +911,7 @@ export default {
                     let freshTime = conf.freshTime ? conf.freshTime : TIMING;
                     this.data = mdData.data.data;
                     if (mdData.data.data.length === 0) {
-                        this.showError(NODATATIP);
+                        this.showError(t('mdtrend.nodataTip'));
                     }
                     else {
                         this.initChatType(conf.style.displayType);
@@ -896,7 +937,7 @@ export default {
         renderDataByConf(conf) {
             let trendConf = u.clone(conf);
             this.trendConf = u.extend({
-                title: TITLE,
+                title: t('mdtrend.title'),
                 style: {
                     displayType: 'line',
 
@@ -905,10 +946,13 @@ export default {
                 }
             }, trendConf);
             if (trendConf && trendConf.display) {
+                if (trendConf.style && trendConf.style.displayType) {
+                    this.initChatType(trendConf.style.displayType)
+                }
                 this.$nextTick(() => {
                     this.data = trendConf.display;
                     if (trendConf.display.length === 0) {
-                        this.showError(NODATATIP);
+                        this.showError(t('mdtrend.nodataTip'));
                     }
                     else {
                         this.renderChart(trendConf.display);
@@ -1020,7 +1064,7 @@ export default {
                     feature: {
                         myTool: {
                             show: this.changeType,
-                            title: '切换为面积图',
+                            title: this.t('mdtrend.switchToArea'),
                             icon: 'image://' + chartareaPng,
                             onclick: () => {
                                 u.each(this.commonOption.series, item => {
@@ -1038,7 +1082,7 @@ export default {
                                 line: 'image://' + chartlinePng,
                                 bar: 'image://' + chartcolumnPng,
                                 stack: 'image://' + chartstackPng,
-                                tiled: 'image://' + chartnormalPng
+                                // tiled: 'image://' + chartnormalPng
                             },
                             option: {
                                 line: {
@@ -1155,8 +1199,10 @@ export default {
                             let html = `<dd class="echarts-tooltip-item" style="color: ${item.color}">`
                                 + item.seriesName
                                 + ': '
+                                + `<span class="echarts-tooltip-item-value">`
                                 + mdutil.setDecimal(item.value[1], decimals)
                                 + valueSuffix
+                                + `</span>`
                                 + '</dd>';
                             seriesTooltip.push(html);
                         });
@@ -1253,7 +1299,7 @@ export default {
                     this.freshData();
                 }
                 catch (e) {
-                    this.showError(ERRORCONFIG);
+                    this.showError(t('mdtrend.errorConfig'));
                 }
             }
         },

@@ -37,10 +37,8 @@
                 :weekDays="dateOptions.weekDays"
                 :currentCells="dateValue.leftDays"
                 :otherCells="dateValue.rightDays"
+                :disabledDateClickTip="disabledDateClickTip"
                 @on-date-change="dateChange"
-                @reset-side-bar="resetSidebar"
-                @reset-hot-keys="resetHotKeys"
-                @reset-top-bar="resetTopBar"
                 @auto-close-picker="autoClosePicker"
             >
             </NvDatePickerDateTable>
@@ -82,10 +80,8 @@
                 :weekDays="dateOptions.weekDays"
                 :currentCells="dateValue.rightDays"
                 :otherCells="dateValue.leftDays"
+                :disabledDateClickTip="disabledDateClickTip"
                 @on-date-change="dateChange"
-                @reset-side-bar="resetSidebar"
-                @reset-hot-keys="resetHotKeys"
-                @reset-top-bar="resetTopBar"
                 @auto-close-picker="autoClosePicker"
             >
             </NvDatePickerDateTable>
@@ -119,6 +115,7 @@ export default {
         // 日期时间候选项
         dateOptions: Object,
         isDisabledHandler: Function,
+        disabledDateClickTip: String,
         type: {
             type: String,
             default: 'datetime'
@@ -186,11 +183,13 @@ export default {
             this.updateYearRange();
             
             this.dateValue.leftDays = datePickerUtils.getMonthData(
+                this,
                 this.dateValue.startYear,
                 this.dateValue.startMonth,
                 this.isDisabledHandler
             )['days'];
             this.dateValue.rightDays = datePickerUtils.getMonthData(
+                this,
                 this.dateValue.endYear,
                 this.dateValue.endMonth,
                 this.isDisabledHandler
@@ -208,11 +207,13 @@ export default {
             this.linkage(pos);
             this.updateYearRange();
             this.dateValue.leftDays = datePickerUtils.getMonthData(
+                this,
                 this.dateValue.startYear,
                 this.dateValue.startMonth,
                 this.isDisabledHandler
             )['days'];
             this.dateValue.rightDays = datePickerUtils.getMonthData(
+                this,
                 this.dateValue.endYear,
                 this.dateValue.endMonth,
                 this.isDisabledHandler
@@ -265,13 +266,13 @@ export default {
             let rightMinYear = u.min(rightYears);
             let rightMaxYear = u.max(rightYears);
 
-            if (this.dateValue.startYear < leftMinYear) {
+            if (this.dateValue.startYear && this.dateValue.startYear < leftMinYear) {
                 leftYears.unshift(this.dateValue.startYear);
                 rightYears.unshift(this.dateValue.startYear);
                 this.$set(this.dateOptions, 'leftYears', leftYears);
                 this.$set(this.dateOptions, 'rightYears', rightYears);
             }
-            else if (this.dateValue.endYear > rightMaxYear) {
+            else if (this.dateValue.endYear && this.dateValue.endYear > rightMaxYear) {
                 leftYears.push(this.dateValue.endYear);
                 rightYears.push(this.dateValue.endYear);
                 this.$set(this.dateOptions, 'leftYears', leftYears);
@@ -393,27 +394,6 @@ export default {
          */
         dateChange() {
             this.$emit('on-date-change');
-        },
-        /**
-         * 重置内部快捷面板
-         *
-         */
-        resetSidebar() {
-            this.$emit('reset-side-bar');
-        },
-        /**
-         * 重置外部快捷面板
-         *
-         */
-        resetHotKeys() {
-            this.$emit('reset-hot-keys');
-        },
-        /**
-         * 重置外部快捷面板
-         *
-         */
-        resetTopBar() {
-            this.$emit('reset-top-bar');
         },
         /**
          * 自动关闭选择面板，当confirm=false且设置autoClose=true时有效

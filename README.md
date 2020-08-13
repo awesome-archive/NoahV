@@ -2,8 +2,8 @@
 
 简体中文 | [English](./README_EN.md)
 
-<a href="https://travis-ci.org/baidu/NoahV">
-	<img src="https://img.shields.io/travis/baidu/NoahV/master.svg?style=flat-square"  alt="build">
+<a href="https://travis-ci.com/baidu/NoahV">
+	<img src="https://img.shields.io/travis/com/baidu/NoahV?style=flat-square"  alt="build">
 </a>
 
 <a href="https://github.com/baidu/NoahV/blob/master/LICENSE">
@@ -18,7 +18,7 @@
 	<img src="https://img.shields.io/github/commit-activity/w/baidu/NoahV.svg?style=flat-square" alt="commit">
 </a>
 
-NoahV是一个基于vue开发的前端应用框架，主要适用于常见的后台管理系统，官网地址：[http://www.noahv.org/](http://www.noahv.org/)
+NoahV是一个基于vue开发的前端应用框架，主要适用于常见的后台管理系统，文档地址：[https://baidu.github.io/NoahV](https://baidu.github.io/NoahV), 如访问速度较慢，可尝试访问如下地址：[https://noahv.gitee.io/](https://noahv.gitee.io/)
 
 特性：
 
@@ -69,14 +69,20 @@ $ noahv create
 # 根据提示选择需要创建的页面类型，目前支持form、list、filterList、chart四种模板类型
 ```
 
-详细信息请查看 [模板使用](http://www.noahv.org/#/guide/tpl)
+详细信息请查看 [模板使用](https://baidu.github.io/NoahV/#/guide/tpl)
 
-更多关于框架的使用请查看 [NoahV开发指南](http://www.noahv.org/#/guide/about)
+更多关于框架的使用请查看 [NoahV开发指南](https://baidu.github.io/NoahV/#/guide/about)
 
 
 ## 讨论
 
-欢迎提 ISSUE 讨论
+| 微信群 |    GitHub issues                                               |
+| ---------- | ------------------------------------------------------------ |
+| <img src="https://noahv.cdn.bcebos.com/github%2Ff414efb2572218cd6756ca483.jpg" width="120px"> | [issues](https://github.com/baidu/NoahV/issues) |
+
+## 参与共建
+
+欢迎大家一起参与NoahV的共建，详情请参考[贡献指南](./CONTRIBUTING.md).
 
 ## License
 

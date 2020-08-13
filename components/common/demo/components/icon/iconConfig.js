@@ -1,5 +1,8 @@
 export const iconConfig = {
     iconList: [
+        ['web-mo', '网络', '显示器', '电脑', 'web'],
+        ['manage', '管理', 'manage'],
+        ['room-mo', '房间', 'room'],
         ['cloud-monitor', '云监控', '云', '电脑', '显示器', 'monitor'],
         ['permission-list', '权限', '管理', '权限列表', 'authority'],
         ['online-management', '上线', '管理', '上传'],
@@ -8,6 +11,8 @@ export const iconConfig = {
         ['unfold', '展开', '伸展', '打开'],
         ['uploader', '上传', '上传文件', '导出'],
         ['download-alias', '下载', '导出'],
+        ['arrow-up-line', '上移'],
+        ['arrow-down-line', '下移'],
         ['function-setting', '功能设置', '滑动', '滑块', '拖拽'],
         ['history', '历史数据', '最近'],
         ['scheme-comparison', '对比', '方案对比', '方案', '调色版'],

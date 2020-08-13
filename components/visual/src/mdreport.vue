@@ -106,9 +106,9 @@
                     </tr>
                 </tfoot>
             </table>
-            <div v-if="bodyLists.length === 0 && isload" class="nodata">无数据</div>
+            <div v-if="bodyLists.length === 0 && isload" class="nodata">{{t('mdreport.nodataTip')}}</div>
             <div v-if="comments" class="comment">{{comments}}</div>
-            <div class="loading-panel"><div class="loading-box">正在加载中……</div></div>
+            <div class="loading-panel"><div class="loading-box">{{t('mdreport.loading')}}</div></div>
         </div>
         <div class="report-error-holder" v-if="errTip">{{errTip}}</div>
         <nv-mask ref="mask"></nv-mask>
@@ -121,7 +121,10 @@ import moment from 'moment';
 import mdutil from './util/util';
 import nvMask from './mask';
 
-const TITLE = '数据表格';
+import {t} from './locale';
+import mixin from './mixins';
+
+const TITLE = t('mdreport.title');
 const DEFAULTFORMAT = 'MM.DD HH:mm';
 const DEFAULTTIME = 'before(2h)';
 const DEFAULTCONF = {
@@ -146,6 +149,7 @@ function evil(fn) {
     return new Fn('return ' + fn)();
 }
 export default {
+    mixins: [mixin],
     props: {
         // get conf's url
         url: {
@@ -274,15 +278,11 @@ export default {
         }
     },
     created() {
-
         // Read user configuration, including external api configuration
         widgetConf = this.$extraEchartsConf;
+
         if (this.path) {
             this.getConf();
-            return;
-        }
-        if (this.conf) {
-            this.renderConf();
         }
     },
     mounted() {
@@ -293,8 +293,14 @@ export default {
          */
         this.redraw = u.throttle(this.scrollTop, 100);
 
+        let scrollTrigger = widgetConf.extraComponent.trend.scrollTrigger || document;
+
         // add lazy loading when you scroll the page
-        $(document).on('scroll', this.redraw);
+        $(scrollTrigger).on('scroll', this.redraw);
+        
+        if (this.conf) {
+            this.renderConf();
+        }
     },
     methods: {
         getConf() {
@@ -328,7 +334,6 @@ export default {
                 if (data.data.success) {
                     this.errTip = false;
                     this.reportConf = JSON.parse(data.data.data.configure || '{}');
-
                     // render data
                     this.scrollTop();
                 }
@@ -343,7 +348,7 @@ export default {
                 title: conf.title,
 
                 // show the main name of the table
-                main: conf.data.caption || '监控对象',
+                main: conf.data.caption || this.t('mdreport.objectsName'),
 
                 // whether to load children dom
                 loadChildren: conf.data.loadChildren,
@@ -389,6 +394,8 @@ export default {
             if (this.reportConf.display) {
                 this.data = this.reportConf.display;
                 this.render(this.reportConf.display);
+                this.isLoading = false;
+                this.hideMask();
             }
             else {
                 // Data request configuration
@@ -529,8 +536,11 @@ export default {
 
         buildTableBody(list, columns, level, parentInfo) {
             let len = list.length;
+            let hasOwnParent = parentInfo ? true : false;
             $.each(list, (i, item) => {
-                let treeInfo = {};
+                let treeInfo = {
+                    isShow: true
+                };
                 if (item.children && item.children.length > 0) {
                     this.reportType = 'tree';
                 }
@@ -540,12 +550,12 @@ export default {
                 }
                 else {
                     let tempSublings = [];
-                    if (parentInfo) {
+                    if (hasOwnParent && parentInfo) {
                         parentInfo.parentHasSublings.map(item => {
                             tempSublings.push(item);
                             return item;
                         });
-                        tempSublings.push((parentInfo.parent.length > 1));
+                        tempSublings.push((parentInfo.parent && parentInfo.parent.length > 1));
                     }
                     else {
                         parentInfo = {parentHasSublings: []};
@@ -574,7 +584,7 @@ export default {
                             }
                             catch (e) {
                                 str = {
-                                    name: '查询失败',
+                                    name: this.t('mdreport.caculteError'),
                                     sortid: col2.sortid
                                 };
                             }
@@ -589,7 +599,7 @@ export default {
                         }
                         catch (e) {
                             str = {
-                                name: '查询失败',
+                                name: this.t('mdreport.caculteError'),
                                 sortid: col.sortid
                             };
                         }
@@ -716,13 +726,13 @@ export default {
                                     sum: mdutil.setDecimal(itemTotal, col2.decimals),
                                     avg: mdutil.setDecimal(itemTotal / bodyList.length, col2.decimals)
                                 };
-                                if (!footer[col.total]) {
+                                if (!footer[col2.total]) {
                                     return
                                 }
                                 totalInfo = col2.unit ? footer[col2.total] + col2.unit : footer[col2.total];
                             }
                             catch (e) {
-                                totalInfo = '计算失败';
+                                totalInfo = this.t('mdreport.caculteError');
                             }
                             totals.push(totalInfo);
                         }
@@ -756,7 +766,7 @@ export default {
                         }
                     }
                     catch (e) {
-                        totalInfo = '计算失败';
+                        totalInfo = this.t('mdreport.caculteError');
                     }
                     totals.push(totalInfo);
                 }
@@ -818,7 +828,7 @@ export default {
         expandNode(nodeInfo) {
             nodeInfo.isExpend = !nodeInfo.isExpend;
             this.bodyLists.map(trItem => {
-                if (trItem.treeInfo.id.indexOf(nodeInfo.id + '-') > -1) {
+                if (trItem.treeInfo.id && trItem.treeInfo.id.indexOf(nodeInfo.id + '-') > -1) {
                     if (nodeInfo.isExpend) {
                         trItem.treeInfo.isExpend = nodeInfo.isExpend;
                     }
@@ -850,10 +860,10 @@ export default {
                             b.columns.map(bColumnItem => {
                                 if (bColumnItem.sortid === sortId) {
                                     if (column.sortType === 'asc') {
-                                        compareResult = aColumnItem.value > bColumnItem.value;
+                                        compareResult = aColumnItem.value - bColumnItem.value;
                                     }
                                     else {
-                                        compareResult = aColumnItem.value < bColumnItem.value;
+                                        compareResult = bColumnItem.value - aColumnItem.value;
                                     }
                                 }
                                 return bColumnItem;
@@ -882,7 +892,7 @@ export default {
                                             if (b.treeInfo.isLast && aColumnItem.value > bColumnItem.value) {
                                                 a.treeInfo.isLast = true;
                                                 b.treeInfo.isLast = false;
-                                                compareResult = aColumnItem.value > bColumnItem.value;
+                                                compareResult = aColumnItem.value - bColumnItem.value;
                                             }
                                         }
 
@@ -890,7 +900,7 @@ export default {
                                         else if (b.treeInfo.isLast && aColumnItem.value < bColumnItem.value) {
                                             a.treeInfo.isLast = true;
                                             b.treeInfo.isLast = false;
-                                            compareResult = aColumnItem.value < bColumnItem.value;
+                                            compareResult = bColumnItem.value - aColumnItem.value;
                                         }
                                     }
                                     return bColumnItem;
@@ -953,7 +963,7 @@ export default {
          * hide loading mdmask
          */
         hideMask() {
-            this.$refs.mask.hide();
+            this.$refs.mask && this.$refs.mask.hide();
         }
     },
     beforeDestroy() {

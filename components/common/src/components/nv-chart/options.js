@@ -7,6 +7,7 @@
  */
 
 import _ from 'lodash';
+import util from './chartUtil';
 
 
 const commonOption = {
@@ -54,13 +55,7 @@ const commonOption = {
         axisLabel: {
             color: '#333',
             formatter(value) {
-                if (typeof value === 'number' && value > 1000000) {
-                    return Math.ceil(value / 1000000) + 'M';
-                }
-                else if (typeof value === 'number' && value > 1000) {
-                    return Math.ceil(value / 1000) + 'K';
-                }
-                return value;
+                return util.numberFormat(value);
             }
         },
         axisTick: {
@@ -89,7 +84,7 @@ const lineChartOption = {
         },
         extraCssText: 'border-radius:0;'
             + 'padding:0;'
-            + 'background-color:rgba(255,255,255,.95);'
+            + 'background-color:rgba(255,255,255,.6);'
             + 'box-shadow:2px 2px 4px 2px rgba(58,98,202,.3);',
         formatter(params) {
             let seriesList = [];
@@ -110,7 +105,7 @@ const lineChartOption = {
                     + '</dd>');
             }
             return '<dl style="min-width: 150px;padding-bottom: 3px">'
-                + '<dt style="background-color: #3a62ca;padding: 5px 10px;color: #fff;margin-bottom: 3px;">'
+                + '<dt style="background-color: #fff;padding: 5px 10px;color: #000;margin-bottom: 3px;">'
                 + (Array.isArray(params) ? params[0].axisValueLabel : params.axisValueLabel)
                 + '</dt>'
                 + seriesList.join('')

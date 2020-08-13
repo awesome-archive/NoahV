@@ -52,9 +52,36 @@ function isObject(obj) {
     return obj instanceof Object && typeof obj !== 'function';
 }
 
+function findEntry(config, parent){
+    let entry = '';
+    if (config && Array.isArray(config) && config.length > 0) {
+        let len = config.length;
+        for (let i = 0; i < len; i++) {
+            if (config[i].entry === true) {
+                if (parent && config[i].path.indexOf(parent.path) === -1) {
+                    /\/$/.test(parent.path) || /^\//.test(config[i].path)
+                    ? entry = parent.path + config[i].path
+                    : entry = parent.path + '/' + config[i].path
+                }
+                else {
+                    entry = config[i].path;
+                }
+                break;
+            }
+            else if (config[i].children && Array.isArray(config[i].children)) {
+                let childrenEntry = findEntry(config[i].children, config[i]);
+                if (childrenEntry) {
+                    entry = childrenEntry;
+                    break;
+                }
+            }
+        }
+    }
+    return entry;
+}
+
 const router = function (config) {
     let routers = [];
-    let entry = '';
     _.each(config, function (item) {
         let temp = {};
         // 处理components写法
@@ -72,12 +99,25 @@ const router = function (config) {
         else if (item.component && isObject(item.component)) {
             let component = {};
             _.each(item.component, function (value, key) {
-                component[key] = typeof value === 'string' ? getComponent(value) : value;
+                if (key === 'template') {
+                    component[key] = value;
+                }
+                else {
+                    component[key] = typeof value === 'string' ? getComponent(value) : value;
+                }
             });
-            temp = {
-                path: item.path,
-                components: component
-            };
+            if (component.template) {
+                temp = {
+                    path: item.path,
+                    component: component
+                };
+            }
+            else {
+                temp = {
+                    path: item.path,
+                    components: component
+                };
+            }
         }
         else {
             temp = {
@@ -94,25 +134,12 @@ const router = function (config) {
                 temp.children = item.children;
             }
         }
-        if (item.meta) {
-            temp.meta = item.meta;
-        }
-
-        // 判断是否配置了入口
-        if (item.entry === true) {
-            entry = item.path;
-        }
-        routers.push(temp);
+        routers.push(Object.assign({}, item, temp));
     });
-
-    if (entry === '') {
-        entry = config[0].path;
-    }
-
     // 配置默认跳转
     routers.unshift({
         path: '',
-        redirect: entry
+        redirect: findEntry(config) || config[0].path
     });
     return routers;
 };

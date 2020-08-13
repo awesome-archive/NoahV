@@ -8,7 +8,7 @@
             <div class="time">{{times}}</div>
             <ul class="billboard-list" v-if="!errTip">
                 <li v-for="sub in subTitles" :data-type="sub.display" :class="{warning:sub.warning}">
-                    <h2>{{sub.name}}</h2>
+                    <h2>{{sub.alias || sub.name}}</h2>
                     <h3 :title="sub.data + sub.unit"><span>{{sub.data}}</span>{{sub.unit}}</h3>
                 </li>
             </ul>
@@ -24,8 +24,11 @@ import moment from 'moment';
 import mdutil from './util/util';
 import nvMask from './mask';
 
+import {t} from './locale';
+import mixin from './mixins';
+
 const HEIGHT = 200;
-const TITLE = '数据面板';
+const TITLE = t('billboard.title');
 const DEFAULTTIME = 'before(2h)';
 const DEFAULTNULLVALUE = 'N/A';
 const DEFAULTFORMAT = 'MM.DD HH:mm';
@@ -38,7 +41,7 @@ const DEFAULTCONF = {
 // Default settings
 const DEFAULTVALUE = [
     {
-        name: '子标题',
+        name: t('billboard.subTitle'),
         value: 0,
         unit: '%'
     }
@@ -48,6 +51,7 @@ const DEFAULTVALUE = [
 let widgetConf = {};
 const DEFAULT_REQUEST_TYPE = 'post';
 export default {
+    mixins: [mixin],
     name: 'billboard',
     props: {
 
@@ -92,6 +96,13 @@ export default {
         confMethod: {
             type: String,
             default: 'post',
+            required: false
+        },
+
+        // filter data
+        dataFilter: {
+            type: Function,
+            default: data => data,
             required: false
         }
     },
@@ -314,6 +325,7 @@ export default {
             }
             this.isLoading = true;
             this.$wRequest(dataParams).then(mdData => {
+                mdData = this.dataFilter(mdData);
                 if (mdData.data.success) {
 
                     // if the configuration's length equal 0,then show 'No Data'.
@@ -395,7 +407,7 @@ export default {
                             temp = u.clone(mapItem);
                             try {
                                 // The Number type will automatically delete the end 0
-                                temp.data = mdutil.setDecimal(mapItem.data[0][1], item.decimals);
+                                temp.data = mdutil.setDecimal(mapItem.value || mapItem.data[0][1] , item.decimals || 4);
                             }
                             catch(err) {
                                 temp.data = '0';
@@ -403,15 +415,21 @@ export default {
                             }
                         }
                     });
+                    temp.alias = item.alias ? item.alias : '';
                     temp.data = temp.data ? temp.data : DEFAULTNULLVALUE;
                     temp.unit = item.unit || '';
-                    temp.name = item.name ? item.name : '未配置';
+                    temp.name = item.name ? item.name : this.t('billboard.noConf');
                     nData.push(temp);
                 });
                 this.hideMask();
             }
             else if (data && data.length > 0) {
                 data.map(item => {
+                    if (!item.data && item.value) {
+                        item.data = item.value;
+                    }
+                    console.log(item)
+                    item.data = mdutil.setDecimal(item.data, item.decimals || 4);
                     nData.push(item);
                     return item;
                 });

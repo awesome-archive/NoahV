@@ -21,12 +21,20 @@ export default [
         component: r => require.ensure([], () => r(require('./components/icon/icon.vue')), 'icon')
     },
     {
+        path: '/nvcheckbox',
+        component: r => require.ensure([], () => r(require('./components/checkbox/checkbox.vue')), 'checkbox')
+    },
+    {
         path: '/nvtree',
         component: r => require.ensure([], () => r(require('./components/tree/tree.vue')), 'tree')
     },
     {
         path: '/nvdatepicker',
         component: r => require.ensure([], () => r(require('./components/datePicker/datepicker.vue')), 'datepicker')
+    },
+    {
+        path: '/nvcascaderselect',
+        component: r => require.ensure([], () => r(require('./components/cascaderSelect/cascaderSelect.vue')), 'cascaderSelect')
     },
     {
         path: '/nvchart',
@@ -61,6 +69,14 @@ export default [
         component: r => require.ensure([], () => r(require('./components/textLine/textLine.vue')), 'textline')
     },
     {
+        path: '/nvpipline',
+        component: r => require.ensure([], () => r(require('./components/pipline/pipline.vue')), 'pipline')
+    },
+    {
+        path: '/nvtransfer',
+        component: r => require.ensure([], () => r(require('./components/transfer/transfer.vue')), 'transfer')
+    },
+    {
         path: '/nvsteps',
         component: r => require.ensure([], () => r(require('./components/steps/steps.vue')), 'steps')
     },
@@ -71,6 +87,14 @@ export default [
     {
         path: '/nvtag',
         component: r => require.ensure([], () => r(require('./components/tag/tag.vue')), 'tag')
+    },
+    {
+        path: '/nvellipsis',
+        component: r => require.ensure([], () => r(require('./components/ellipsis/ellipsis.vue')), 'ellipsis')
+    },
+    {
+        path: '/nvdutytable',
+        component: r => require.ensure([], () => r(require('./components/nvdutytable/nvdutytable.vue')), 'nvdutytable')
     },
     {
         path: '/nv404',

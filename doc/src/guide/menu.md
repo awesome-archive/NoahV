@@ -1,3 +1,4 @@
+[[TOC]]
 
 ## 概述
 
@@ -41,7 +42,7 @@ header是一个数组，可以通过children配置二级、三级菜单，当选
 | hasLogo      | 是否需要启用网站logo                   | Boolean           | -           |
 | title        | 鼠标放到logo上时的悬浮提示，hasLogo为false时，显示title替代logo | String            | -           |
 | src          | logo图片的源地址                       | String            | -           |
-| href          | 点击logo跳转地址                       | String            | -           |
+| link          | 点击logo跳转地址                       | String            | -           |
 
 
 
@@ -52,7 +53,7 @@ header是一个数组，可以通过children配置二级、三级菜单，当选
 | hasLogin     | 是否启用登录菜单                       | Boolean           | -           |
 | url          | 登录获取用户信息的API                   | String            | -           |
 | logout       | 退出登录的地址                         | String            | -           |
-| subNav       | 登录菜单的下拉子菜单，详见组合示例和下方说明| Array        | -           |
+| subnav       | 登录菜单的下拉子菜单，详见组合示例和下方说明| Array        | -           |
 
 ### subNav配置
 
@@ -69,12 +70,8 @@ header是一个数组，可以通过children配置二级、三级菜单，当选
 
 头部导航和侧导航栏，主要通过配置headerConfig.js和routerConfig.js两个文件实现，其所在目录位置见[目录结构](#/guide/catalog)一章。
 
-<template>
-    <div class="normal-header-config-example">
-        <normalHeaderExample></normalHeaderExample>
-    </div>
-</template>
 
+<img src="../common/assets/img/header-demo.png" width="100%">
 
 
 ```javascript
@@ -292,11 +289,7 @@ export const viewLayoutConfig = {
 ## 组合示例
 
 
-<template>
-    <div class="complex-header-config-example">
-        <complexHeaderExample></complexHeaderExample>
-    </div>
-</template>
+<img src="../common/assets/img/header-demo-complex.png" width="100%">
 
 ```javascript
 /**
@@ -396,23 +389,4 @@ export const viewLayoutConfig = {
     },
 
 };
-
-
 ```
-<script>
-    import normalHeaderExample from './example/header/normal';
-    import complexHeaderExample from './example/header/complex';
-
-    export default {
-        name: 'quickstartMenu',
-        components: {
-            normalHeaderExample,
-            complexHeaderExample
-        }
-    };
-</script>
-
-<style lang="less" >
-    .normal-header-config-example {
-    }
-</style>

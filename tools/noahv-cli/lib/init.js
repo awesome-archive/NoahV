@@ -16,22 +16,33 @@ const ora = require('ora');
 const getGitTemplate = require('./getGitTemplate');
 
 
-module.exports = function init({dashboard}) {
-    let type = dashboard ? 'dashboard' : 'common';
+module.exports = function init({dashboard, ts}) {
+    let type = 'common';
+    if (dashboard) {
+        type = 'dashboard';
+    }
+    if (ts) {
+        type = 'common-ts';
+    }
+
     let dest = process.cwd();
     if (!emptyDir.sync(dest)) {
         logUtil.error('noahv-cli', 'error', 'please run init command in an empty folder!');
         process.exit();
     }
     logUtil.info('noahv-cli', 'info', `Creating a new ${type} project in ${dest}`);
-    let spinner = ora('Generating template...');
-    spinner.start();
+    // let spinner = ora('Generating template...');
+    // spinner.start();
 
     // get template form git
     getGitTemplate(type, dest, function (err) {
-        spinner.stop();
+        // spinner.stop();
         if (err) {
             logUtil.error('noahv-cli', 'error', 'get template failed');
+            console.log('');
+            // console.log('Error info:');
+            // console.log(err);
+            // console.log('');
             return;
         }
         // remove git repo
